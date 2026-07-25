@@ -17,11 +17,11 @@ interface About3Props {
     src: string;
     alt: string;
   };
-  secondaryImage: {
+  secondaryImage?: {
     src: string;
     alt: string;
   };
-  breakout: {
+  breakout?: {
     src?: string;
     alt?: string;
     title: string;
