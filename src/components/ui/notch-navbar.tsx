@@ -1,11 +1,14 @@
 "use client"
+
 import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { ArrowUpRight, Home, User, Calendar, Zap, CreditCard, Menu, X, Sun, Moon } from "lucide-react"
+import { Home, User, Calendar, Zap, CreditCard, Menu, X, Sun, Moon, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "next-themes"
 import { ThemeToggler } from "../common/(themes)/mode-toggler"
+import { Show, SignInButton, UserButton } from "@clerk/nextjs"
 
 // Helper component for navigation links
 const NavLink = ({ href, icon: Icon, label }: { href: string; icon: React.ComponentType<{ className?: string }>; label: string }) => (
@@ -23,7 +26,10 @@ const MobileThemeToggle = () => {
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 0)
+    return () => clearTimeout(timer)
+  }, [])
 
   if (!mounted) return <div className="w-9 h-9" />
 
@@ -42,6 +48,10 @@ const MobileThemeToggle = () => {
 
 export function NotchNavbar({ className, ...props }: React.HTMLAttributes<HTMLElement> & { logo?: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Only show on home screen
+  if (pathname !== "/") return null
 
   // Navigation items configuration
   const items = {
@@ -128,12 +138,36 @@ export function NotchNavbar({ className, ...props }: React.HTMLAttributes<HTMLEl
                 
                 <div className="flex gap-4 pl-4 border-l border-foreground/10 shrink-0 items-center">
                   <ThemeToggler />
-                  <Link href="/login" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors whitespace-nowrap">
-                    Log in
-                  </Link>
-                  <Link href="/signup" className="px-3 py-1.5 text-sm font-medium text-background bg-foreground rounded-2xl hover:bg-foreground/90 transition-colors shadow-sm shadow-foreground/10 whitespace-nowrap">
-                    Sign up
-                  </Link>
+                  
+                  {/* Clerk Auth: Signed Out → Show Login Button (opens modal) */}
+                  <Show when="signed-out">
+                    <SignInButton mode="modal">
+                      <button className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors whitespace-nowrap">
+                        Log in
+                      </button>
+                    </SignInButton>
+                  </Show>
+
+                  {/* Clerk Auth: Signed In → Show User Profile Button */}
+                  <Show when="signed-in">
+                    <UserButton 
+                      appearance={{
+                        elements: {
+                          avatarBox: "w-8 h-8"
+                        }
+                      }}
+                    >
+                          <UserButton.MenuItems>
+        {/* Dashboard - ONLY for admins */}
+        <UserButton.Link
+          label="Dashboard"
+          labelIcon={<LayoutDashboard className="h-4 w-4" />}
+          href="/dashboard"
+        />
+
+      </UserButton.MenuItems>
+                      </UserButton>
+                  </Show>
                 </div>
               </nav>
 
@@ -193,20 +227,21 @@ export function NotchNavbar({ className, ...props }: React.HTMLAttributes<HTMLEl
                ))}
                <div className="h-px bg-foreground/10 my-2" />
                <div className="flex flex-col gap-2">
-                 <Link 
-                    href="/login" 
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-foreground/5 transition-colors font-medium text-foreground/90"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                 >
-                   Log in
-                 </Link>
-                 <Link 
-                    href="/signup" 
-                    className="flex items-center justify-center gap-2 p-3 rounded-lg bg-foreground text-background font-medium mt-2"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                 >
-                   Sign up
-                 </Link>
+                 {/* Mobile Clerk Auth */}
+                 <Show when="signed-out">
+                   <SignInButton mode="modal">
+                     <button className="flex items-center gap-3 p-3 rounded-lg hover:bg-foreground/5 transition-colors font-medium text-foreground/90 w-full text-left">
+                       Log in
+                     </button>
+                   </SignInButton>
+                 </Show>
+                 
+                 <Show when="signed-in">
+                   <div className="flex items-center justify-between p-3">
+                     <span className="font-medium text-foreground/90">Account</span>
+                     <UserButton />
+                   </div>
+                 </Show>
                </div>
              </nav>
 

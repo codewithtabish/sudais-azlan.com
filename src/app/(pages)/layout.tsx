@@ -7,6 +7,8 @@ import { Navbar } from "@/components/common/(navbar)/navbar";
 import { HeroSection } from "@/components/app/(landing)/hero-section";
 import Footer from "@/components/common/(footer)/footer";
 import { NotchNavbar } from "@/components/ui/notch-navbar";
+import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +37,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <ClerkProvider>
+
   <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -61,6 +65,8 @@ export default function RootLayout({
             
                </AppContainer>
           </ThemeProvider>      
+                  </ClerkProvider>
+
           
           
             </body>

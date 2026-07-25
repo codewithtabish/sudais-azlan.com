@@ -145,6 +145,8 @@ export default function Footer() {
               trigger: colsRef.current,
               start: "top 85%",
               toggleActions: "play none none reverse",
+              invalidateOnRefresh: true,
+              fastScrollEnd: true,
             },
           }
         );
@@ -163,6 +165,8 @@ export default function Footer() {
             trigger: contactRef.current,
             start: "top 85%",
             toggleActions: "play none none reverse",
+            invalidateOnRefresh: true,
+            fastScrollEnd: true,
           },
         }
       );
@@ -178,12 +182,41 @@ export default function Footer() {
             trigger: bottomRef.current,
             start: "top 95%",
             toggleActions: "play none none reverse",
+            invalidateOnRefresh: true,
+            fastScrollEnd: true,
           },
         }
       );
     }, footerRef);
 
-    return () => ctx.revert();
+    // ── CRITICAL FIX: Refresh ScrollTrigger after layout settles ──
+    // Next.js client-side navigation doesn't trigger a full page load,
+    // so ScrollTrigger keeps stale positions from the previous page.
+    const refreshTriggers = () => {
+      ScrollTrigger.refresh();
+    };
+
+    // Immediate + delayed refreshes to catch font/image loading
+    const timers = [
+      setTimeout(refreshTriggers, 50),
+      setTimeout(refreshTriggers, 200),
+      setTimeout(refreshTriggers, 800),
+    ];
+
+    // Refresh on resize (debounced)
+    let resizeTimer: ReturnType<typeof setTimeout>;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(refreshTriggers, 150);
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      ctx.revert();
+      timers.forEach(clearTimeout);
+      clearTimeout(resizeTimer);
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   const scrollToTop = () => {

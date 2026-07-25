@@ -4,7 +4,6 @@ import { HeroSection } from '@/components/app/(landing)/hero-section'
 import { ServicesSection } from '@/components/app/(landing)/our-services-section'
 import { AppContainer } from '@/components/app/(layouts)/app-container'
 import { Section } from '@/components/app/(layouts)/section-container'
-import Footer from '@/components/common/(footer)/footer'
 import { AnimatedGlow } from '@/components/common/(themes)/anumated-glow'
 import React from 'react'
 
@@ -39,10 +38,6 @@ const HoemLandingPage = () => {
   
 
 
-
-  
-
- 
     
    </>
   )
