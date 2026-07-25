@@ -16,7 +16,13 @@ const AboutPage = () => {
   title="The Story Behind the Code"
   description="Discover my journey as a Full-Stack Software Engineer, the technologies I work with, the values that guide my development process, and the passion that drives me to build exceptional digital experiences."
 /> */}
-<About3/>
+<About3
+  title="The Story Behind the Code"
+    description="Discover my journey as a Full-Stack Software Engineer, the technologies I work with, the values that guide my development process, and the passion that drives me to build exceptional digital experiences."
+    mainImage={}
+
+
+/>
               {/* <AboutSectionPage/> */}
             
            

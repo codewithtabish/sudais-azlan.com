@@ -13,7 +13,7 @@ interface About3Props {
   className?: string;
   title: string;
   description?: string;
-  mainImage: {
+  mainImage?: {
     src: string;
     alt: string;
   };
