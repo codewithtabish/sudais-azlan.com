@@ -7,6 +7,7 @@ import Footer from "@/components/common/(footer)/footer";
 import { ClerkProvider } from '@clerk/nextjs'
 import { Navbar } from "@/components/common/(navbar)/navbar";
 import { NotchNavbar } from "@/components/ui/notch-navbar";
+import { Suspense } from "react";
 // import { Suspense } from "react";
 
 
@@ -49,14 +50,16 @@ export default function RootLayout({
             <AppContainer>
               <div>
                 <div className="hidden md:block">
-              <NotchNavbar/>
-
+ <Suspense fallback={null}>
+    <NotchNavbar />
+  </Suspense>
 
                 </div>
                 <div className="block md:hidden">
 
-                  
+                   <Suspense fallback={null}>
                 <Navbar/>
+  </Suspense>
 
                 </div>
 
