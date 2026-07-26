@@ -14,6 +14,13 @@ const s3 = new S3Client({
   },
 });
 
+// ── Upload limits ───────────────────────────────────────────────────────
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+
+// ── Target banner dimensions ────────────────────────────────────────────
+const BANNER_WIDTH = 1920;
+const BANNER_HEIGHT = 1080;
+
 // ── Watermark path ──────────────────────────────────────────────────────
 const watermarkPath = path.join(
   process.cwd(),
@@ -174,11 +181,13 @@ async function padWatermarkForTopOffset(
 /**
  * Upload a watermarked blog banner image to S3.
  *
- * Production pipeline (16:9 banners only):
- * 1. Receive image as number[] (Server Action compatible)
- * 2. Auto-rotate via EXIF
- * 3. Validate aspect ratio is ~16:9 (±5% tolerance) — reject otherwise
- * 4. Resize only if wider than 1920px (fit: "inside", never enlarge, never crop)
+ * Pipeline (accepts ANY image dimensions, outputs EXACTLY 1920 × 1080):
+ * 1. Extract file from FormData
+ * 2. Validate file size (≤ 5 MB)
+ * 3. Auto-rotate via EXIF
+ * 4. Force resize to exactly 1920 × 1080 (fit: "cover", attention strategy)
+ *    – any aspect ratio is accepted; Sharp crops/resizes to fill the frame
+ *    – output is ALWAYS 1920 × 1080 for consistency
  * 5. Resize watermark proportionally (~75% of image width)
  * 6. Apply 15% opacity
  * 7. Pad watermark with ~60 px top offset
@@ -190,16 +199,31 @@ async function padWatermarkForTopOffset(
  * 13. Return S3 URL
  */
 export async function uploadWatermarkedImage(
-  fileData: number[],
-  fileType: string,
-  fileName: string,
+  formData: FormData,
 ): Promise<{ fileUrl: string }> {
   try {
-    // ── 1. Convert incoming data to Buffer ─────────────────────────────
-    const inputBuffer = Buffer.from(fileData);
+    // ── 1. Extract file from FormData ──────────────────────────────────
+    const file = formData.get("file");
+
+    if (!file || !(file instanceof File)) {
+      throw new Error("No file received");
+    }
+
+    const fileName = file.name;
+    const fileType = file.type;
+    const arrayBuffer = await file.arrayBuffer();
+    const inputBuffer = Buffer.from(arrayBuffer);
 
     if (inputBuffer.length === 0) {
       throw new Error("Input file is empty");
+    }
+
+    // ── 2. Enforce 5 MB max file size ──────────────────────────────────
+    if (inputBuffer.length > MAX_FILE_SIZE_BYTES) {
+      const sizeMB = (inputBuffer.length / (1024 * 1024)).toFixed(2);
+      throw new Error(
+        `File is too large (${sizeMB} MB). Maximum allowed size is 5 MB.`,
+      );
     }
 
     console.log(
@@ -212,11 +236,11 @@ export async function uploadWatermarkedImage(
       "bytes",
     );
 
-    // ── 2. Load original watermark ─────────────────────────────────────
+    // ── 3. Load original watermark ─────────────────────────────────────
     const originalWatermarkBuffer = await getOriginalWatermarkBuffer();
     console.log("[Upload] Watermark loaded from:", watermarkPath);
 
-    // ── 3. Auto-rotate image based on EXIF ────────────────────────────
+    // ── 4. Auto-rotate image based on EXIF ────────────────────────────
     const rotatedBuffer = await sharp(inputBuffer).rotate().toBuffer();
 
     const rotatedMeta = await sharp(rotatedBuffer).metadata();
@@ -234,38 +258,19 @@ export async function uploadWatermarkedImage(
       originalHeight,
     );
 
-    // ── 4. Validate 16:9 aspect ratio (±5% tolerance) ─────────────────
-    const ratio = originalWidth / originalHeight;
-    const TARGET_RATIO = 16 / 9; // ≈ 1.777...
-    const TOLERANCE = 0.05; // ±5%
-    const minRatio = TARGET_RATIO * (1 - TOLERANCE); // ≈ 1.688
-    const maxRatio = TARGET_RATIO * (1 + TOLERANCE); // ≈ 1.866
-
-    if (ratio < minRatio || ratio > maxRatio) {
-      throw new Error(
-        "Please upload a 16:9 image.\n\nRecommended size:\n1920 × 1080 pixels.",
-      );
-    }
-
-    console.log(
-      "[Upload] Aspect ratio validated:",
-      ratio.toFixed(3),
-      "(16:9 ±5%)",
-    );
-
-    // ── 5. Resize only if wider than 1920px ───────────────────────────
-    // Preserves aspect ratio • never crops • never stretches • never enlarges
+    // ── 5. Force resize to exactly 1920 × 1080 ─────────────────────────
+    // Any aspect ratio is accepted. Sharp crops/resizes to fill the frame.
+    // fit: "cover" + attention strategy keeps the most important area visible.
+    // Output is ALWAYS 1920 × 1080 for banner consistency.
     const resizedBuffer = await sharp(rotatedBuffer)
-      .resize({
-        width: 1920,
-        fit: "inside",
-        withoutEnlargement: true,
+      .resize(BANNER_WIDTH, BANNER_HEIGHT, {
+        fit: "cover",
+        position: sharp.strategy.attention,
       })
       .toBuffer();
 
-    const resizedMeta = await sharp(resizedBuffer).metadata();
-    const finalWidth = resizedMeta.width ?? originalWidth;
-    const finalHeight = resizedMeta.height ?? originalHeight;
+    const finalWidth = BANNER_WIDTH;
+    const finalHeight = BANNER_HEIGHT;
 
     console.log(
       "[Upload] Final banner dimensions:",

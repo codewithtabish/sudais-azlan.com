@@ -304,12 +304,6 @@ export const BlogFormComp = () => {
     }
   }, [getValues, setValue, attemptedSubmit, touchedFields.slug]);
 
-  // File → number[] for Server Actions
-  const fileToNumberArray = async (file: File): Promise<number[]> => {
-    const arrayBuffer = await file.arrayBuffer();
-    return Array.from(new Uint8Array(arrayBuffer));
-  };
-
   // BANNER UPLOAD
   const handleCoverUpload = useCallback(
     async (file: File) => {
@@ -328,12 +322,9 @@ export const BlogFormComp = () => {
       toast.loading("Uploading banner...", { id: "cover-upload" });
 
       try {
-        const fileData = await fileToNumberArray(file);
-        const result = await uploadWatermarkedImage(
-          fileData,
-          file.type,
-          file.name
-        );
+        const formData = new FormData();
+        formData.append("file", file);
+        const result = await uploadWatermarkedImage(formData);
 
         URL.revokeObjectURL(localPreview);
         setCoverPreview(result.fileUrl);
@@ -381,12 +372,9 @@ export const BlogFormComp = () => {
       toast.loading("Uploading OG image...", { id: "og-upload" });
 
       try {
-        const fileData = await fileToNumberArray(file);
-        const result = await uploadWatermarkedOgImage(
-          fileData,
-          file.type,
-          file.name
-        );
+        const formData = new FormData();
+        formData.append("file", file);
+        const result = await uploadWatermarkedOgImage(formData);
 
         URL.revokeObjectURL(localPreview);
         setOgPreview(result.fileUrl);
@@ -461,11 +449,11 @@ export const BlogFormComp = () => {
         setOgPreview(null);
         setOgImageUrl("");
         setAttemptedSubmit(false);
-          // Redirect after a short delay so the toast is visible
-  setTimeout(() => {
-    router.push("/dashboard/blogs");
-    router.refresh();
-  }, 1200);
+        // Redirect after a short delay so the toast is visible
+        setTimeout(() => {
+          router.push("/dashboard/blogs");
+          router.refresh();
+        }, 1200);
       } else {
         toast.error(result.error || "Failed to create blog");
       }

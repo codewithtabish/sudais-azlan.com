@@ -7,6 +7,7 @@ import { getBlogBySlugAction } from "@/actions/(blogs)/get-blog-by-slug";
 import { Section } from "@/components/app/(layouts)/section-container";
 import { SingleBlogPreviewer } from "@/components/app/(blogs)/single-blogs-previewer";
 import { AppContainer } from "@/components/app/(layouts)/app-container";
+import { ThemeToggler } from "@/components/common/(themes)/mode-toggler";
 
 type PageProps = {
   params: Promise<{
@@ -39,7 +40,7 @@ export default async function SingleBlogPage({ params }: PageProps) {
    
     <main>
       {/* ========== TOP BAR: Back + Mode Toggle ========== */}
-      <div className="fixed top-4 left-4 right-4 z-50 flex items-center justify-between pointer-events-none">
+      <div className="fixed top-4 left-4 right-4 z-50 flex  pointer-events-none   justify-between items-center">
         <div className="pointer-events-auto">
           <Button
             variant="secondary"
@@ -54,15 +55,18 @@ export default async function SingleBlogPage({ params }: PageProps) {
 
               </span>
             </Link>
+
           </Button>
         </div>
         
         <div className="pointer-events-auto">
+                                            <ThemeToggler/>
+
         </div>
       </div>
 
       {/* ========== BANNER SECTION ========== */}
-      <section className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] overflow-hidden">
+      <section className="relative w-full h-100 md:h-125 lg:h-150 overflow-hidden">
 
         <Image
           src={blog.bannerImage}
@@ -79,6 +83,7 @@ export default async function SingleBlogPage({ params }: PageProps) {
         <div className="absolute bottom-0 left-0 right-0">
           <Section>
             <AppContainer>
+            
 
            <div className="max-w-3xl">
               {blog.status === "PUBLISHED" && blog.publishedAt && (
@@ -101,17 +106,20 @@ export default async function SingleBlogPage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* ========== BLOG CONTENT + TABLE OF CONTENTS ========== */}
-      <Section className="py-12 md:py-16 lg:w-[80%]">
-        <div className="flex gap-8 lg:gap-12">
-          {/* Main Content */}
-          <div className="flex-1 min-w-0">
+    
+
+
+          <Section>
+            <AppContainer>
             <SingleBlogPreviewer content={parsedContent}  />
-          </div>
+
+            </AppContainer>
+
+          </Section>
+
 
        
-        </div>
-      </Section>
+ 
     </main>
   )
 }

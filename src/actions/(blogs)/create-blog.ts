@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisam-client";
 import { revalidatePath } from "next/cache";
 import { OpenAI } from "openai";
+import { revalidateFeaturedBlogCache } from "./get-featured-blogs";
 // import { revalidateBlogCache } from "./blogs-all-actions";
 
 const openai = new OpenAI({
@@ -187,6 +188,18 @@ export async function createBlogAction(data: CreateBlogInput) {
         seo: true,
       },
     });
+
+
+    if(blog.featured){
+      // Refresh featured blogs cache (only if this blog is featured)
+  await revalidateFeaturedBlogCache();
+  revalidatePath("/dashboard/blogs")
+  revalidatePath("/")
+  revalidatePath("/blogs")
+  
+
+    }
+
 // 
     console.log("✅ Blog created:", blog.id, "| shortDescription:", blog.shortDescription);
 
