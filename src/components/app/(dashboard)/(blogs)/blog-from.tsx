@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -24,9 +24,6 @@ import { uploadWatermarkedOgImage } from "@/actions/(images)/upload-w-m-og-image
 import BlogEditor from "./blog-editor";
 import { useRouter } from "next/navigation";
 
-// ============================================
-// IMAGE UPLOAD FIELD COMPONENT
-// ============================================
 type ImageUploadFieldProps = {
   label: string;
   icon: React.ElementType;
@@ -38,6 +35,7 @@ type ImageUploadFieldProps = {
   errorMessage?: string;
   description: string;
   dimensions: string;
+  maxSize: string;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
 };
@@ -54,6 +52,7 @@ const ImageUploadField = React.memo(
     errorMessage,
     description,
     dimensions,
+    maxSize,
     onFileSelect,
     onRemove,
   }: ImageUploadFieldProps) => (
@@ -107,7 +106,7 @@ const ImageUploadField = React.memo(
                 Click to upload {label.toLowerCase()}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                PNG, JPG, WEBP — Max 5MB
+                PNG, JPG, WEBP — {maxSize}
               </p>
             </>
           )}
@@ -162,9 +161,6 @@ const ImageUploadField = React.memo(
 
 ImageUploadField.displayName = "ImageUploadField";
 
-// ============================================
-// FEATURED TOGGLE
-// ============================================
 const FeaturedToggle = React.memo(
   ({
     value,
@@ -214,9 +210,6 @@ const FeaturedToggle = React.memo(
 
 FeaturedToggle.displayName = "FeaturedToggle";
 
-// ============================================
-// MAIN FORM
-// ============================================
 export const BlogFormComp = () => {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string>("");
@@ -249,7 +242,6 @@ export const BlogFormComp = () => {
       isFeatured: false,
       content: { blocks: [] },
     },
-    // Validation only on submit attempt. After that, re-validate on every change.
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
@@ -260,7 +252,6 @@ export const BlogFormComp = () => {
   const watchedCover = useWatch({ control, name: "coverImage" });
   const watchedOg = useWatch({ control, name: "ogImage" });
 
-  // Helper: should we show error for this field?
   const showFieldError = useCallback(
     (fieldName: keyof BlogSchemaType) => {
       return (
@@ -271,28 +262,20 @@ export const BlogFormComp = () => {
     [errors, touchedFields, attemptedSubmit]
   );
 
-  // Editor change handler – NEVER force validation on the initial empty emit
   const handleEditorChange = useCallback(
     (data: any) => {
       setEditorContent(data);
-      const hasBlocks = data?.blocks && data.blocks.length > 0;
-
       setValue("content", data, {
-        shouldValidate: attemptedSubmit, // only validate after user has tried to submit
+        shouldValidate: attemptedSubmit,
         shouldDirty: true,
         shouldTouch: true,
       });
-
-      // After a submit attempt, keep the visual error in sync
       if (attemptedSubmit) {
         trigger("content");
       }
     },
     [setValue, attemptedSubmit, trigger]
   );
-
-  // REMOVED the previous useEffect that called setValue(..., { shouldValidate: true }).
-  // It was redundant with handleEditorChange and could re-trigger validation.
 
   const handleGenerateSlug = useCallback(() => {
     const title = getValues("title");
@@ -304,15 +287,14 @@ export const BlogFormComp = () => {
     }
   }, [getValues, setValue, attemptedSubmit, touchedFields.slug]);
 
-  // BANNER UPLOAD
   const handleCoverUpload = useCallback(
     async (file: File) => {
       if (!file.type.startsWith("image/")) {
         toast.error("Cover image must be an image file");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Cover image must be less than 5MB");
+      if (file.size > 8 * 1024 * 1024) {
+        toast.error("Cover image must be less than 8MB");
         return;
       }
 
@@ -327,13 +309,24 @@ export const BlogFormComp = () => {
         const result = await uploadWatermarkedImage(formData);
 
         URL.revokeObjectURL(localPreview);
+
+        if (!result.success) {
+          setCoverPreview(null);
+          setCoverImageUrl("");
+          setValue("coverImage", "", {
+            shouldValidate: attemptedSubmit || !!touchedFields.coverImage,
+            shouldTouch: true,
+          });
+          toast.error(result.error, { id: "cover-upload" });
+          return;
+        }
+
         setCoverPreview(result.fileUrl);
         setCoverImageUrl(result.fileUrl);
         setValue("coverImage", result.fileUrl, {
           shouldValidate: attemptedSubmit || !!touchedFields.coverImage,
           shouldTouch: true,
         });
-
         toast.success("Banner uploaded!", { id: "cover-upload" });
       } catch (error: any) {
         console.error("Banner upload error:", error);
@@ -354,7 +347,6 @@ export const BlogFormComp = () => {
     [setValue, attemptedSubmit, touchedFields.coverImage]
   );
 
-  // OG UPLOAD
   const handleOgUpload = useCallback(
     async (file: File) => {
       if (!file.type.startsWith("image/")) {
@@ -377,13 +369,24 @@ export const BlogFormComp = () => {
         const result = await uploadWatermarkedOgImage(formData);
 
         URL.revokeObjectURL(localPreview);
+
+        if (!result.success) {
+          setOgPreview(null);
+          setOgImageUrl("");
+          setValue("ogImage", "", {
+            shouldValidate: attemptedSubmit || !!touchedFields.ogImage,
+            shouldTouch: true,
+          });
+          toast.error(result.error, { id: "og-upload" });
+          return;
+        }
+
         setOgPreview(result.fileUrl);
         setOgImageUrl(result.fileUrl);
         setValue("ogImage", result.fileUrl, {
           shouldValidate: attemptedSubmit || !!touchedFields.ogImage,
           shouldTouch: true,
         });
-
         toast.success("OG image uploaded!", { id: "og-upload" });
       } catch (error: any) {
         console.error("OG upload error:", error);
@@ -426,7 +429,6 @@ export const BlogFormComp = () => {
     toast.info("OG image removed");
   }, [ogPreview, setValue, attemptedSubmit, touchedFields.ogImage]);
 
-  // SUBMIT
   const onSubmit = useCallback(
     async (data: BlogSchemaType) => {
       const payload = {
@@ -449,7 +451,6 @@ export const BlogFormComp = () => {
         setOgPreview(null);
         setOgImageUrl("");
         setAttemptedSubmit(false);
-        // Redirect after a short delay so the toast is visible
         setTimeout(() => {
           router.push("/dashboard/blogs");
           router.refresh();
@@ -458,16 +459,14 @@ export const BlogFormComp = () => {
         toast.error(result.error || "Failed to create blog");
       }
     },
-    [editorContent, coverImageUrl, ogImageUrl, reset]
+    [editorContent, coverImageUrl, ogImageUrl, reset, router]
   );
 
-  // Handle invalid submit attempt
   const onInvalid = useCallback(() => {
     setAttemptedSubmit(true);
     toast.error("Please fill in all required fields correctly");
   }, []);
 
-  // PREVIEW
   const handlePreview = useCallback(() => {
     if (!editorContent || !editorContent.blocks?.length) {
       toast.error("No content to preview. Add some content first.");
@@ -482,8 +481,6 @@ export const BlogFormComp = () => {
 
   const hasContent = editorContent?.blocks?.length > 0;
 
-  // Manual readiness check – does NOT trigger Zod / does not cause the UnhandledRejection.
-  // This gives the exact UX you asked for: button disabled until everything is filled.
   const isFormReady =
     !!watchedTitle?.trim() &&
     !!watchedSlug?.trim() &&
@@ -502,7 +499,6 @@ export const BlogFormComp = () => {
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         className="space-y-8 max-w-5xl mx-auto p-6 md:p-8 rounded-2xl bg-card border shadow-sm"
       >
-        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="text-center space-y-2 flex-1">
             <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
@@ -525,7 +521,6 @@ export const BlogFormComp = () => {
           </div>
         </div>
 
-        {/* Title */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-foreground">
             Title <span className="text-destructive">*</span>
@@ -548,7 +543,6 @@ export const BlogFormComp = () => {
           )}
         </div>
 
-        {/* Slug */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-foreground">
             Slug <span className="text-destructive">*</span>
@@ -591,7 +585,6 @@ export const BlogFormComp = () => {
           )}
         </div>
 
-        {/* Featured Toggle */}
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-foreground">
             Visibility
@@ -606,7 +599,6 @@ export const BlogFormComp = () => {
           />
         </div>
 
-        {/* Cover Image */}
         <ImageUploadField
           label="Cover Image"
           icon={ImageIcon}
@@ -618,6 +610,7 @@ export const BlogFormComp = () => {
           errorMessage={errors.coverImage?.message}
           description="The main banner displayed at the top of your blog post. Must be 16:9 aspect ratio (e.g. 1920×1080)."
           dimensions="16:9 — 1920 × 1080"
+          maxSize="Max 8MB"
           onFileSelect={(e) => {
             const file = e.target.files?.[0];
             if (file) handleCoverUpload(file);
@@ -625,7 +618,6 @@ export const BlogFormComp = () => {
           onRemove={removeCoverImage}
         />
 
-        {/* OG Image */}
         <ImageUploadField
           label="OG Image"
           icon={Globe}
@@ -637,6 +629,7 @@ export const BlogFormComp = () => {
           errorMessage={errors.ogImage?.message}
           description="Social media preview image. Must be 1.91:1 aspect ratio (e.g. 1200×630)."
           dimensions="1.91:1 — 1200 × 630"
+          maxSize="Max 10MB"
           onFileSelect={(e) => {
             const file = e.target.files?.[0];
             if (file) handleOgUpload(file);
@@ -644,7 +637,6 @@ export const BlogFormComp = () => {
           onRemove={removeOgImage}
         />
 
-        {/* Blog Content */}
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -669,7 +661,6 @@ export const BlogFormComp = () => {
           )}
         </div>
 
-        {/* Submit */}
         <div className="pt-2 space-y-2">
           <button
             type="submit"
