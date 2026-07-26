@@ -8,8 +8,6 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { Navbar } from "@/components/common/(navbar)/navbar";
 import { NotchNavbar } from "@/components/ui/notch-navbar";
 import { Suspense } from "react";
-// import { Suspense } from "react";
-
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,49 +32,51 @@ export default function RootLayout({
   return (
     <html
       data-scroll-behavior="smooth"
-    suppressHydrationWarning
+      suppressHydrationWarning
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ClerkProvider>
-
-  {/* <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          > */}
-            <AppContainer>
-              <div>
-                <div className="hidden md:block">
- <Suspense fallback={null}>
-    <NotchNavbar />
-  </Suspense>
-
+        {/* ClerkProvider reads the request's cookies server-side to
+            determine signed-in/signed-out state. Under cacheComponents,
+            that counts as an uncached dynamic read, so per Clerk's own
+            Next.js 16 guidance it needs its own Suspense boundary — not
+            just its children. */}
+        <Suspense fallback={null}>
+          <ClerkProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <AppContainer>
+                <div>
+                  <div className="hidden md:block">
+                    <Suspense fallback={null}>
+                      <NotchNavbar />
+                    </Suspense>
+                  </div>
+                  <div className="block md:hidden">
+                    <Suspense fallback={null}>
+                      <Navbar />
+                    </Suspense>
+                  </div>
                 </div>
-                <div className="block md:hidden">
+              </AppContainer>
 
-                   <Suspense fallback={null}>
-                <Navbar/>
-  </Suspense>
+              {/* Isolates whatever dynamic reads happen inside the actual
+                  page (e.g. /blogs/[slug]) so the build can still
+                  statically shell the surrounding layout chrome. */}
+              <Suspense fallback={null}>{children}</Suspense>
 
-                </div>
-
-              </div>
-            
-               </AppContainer>
-            {children}
-             <AppContainer>
-                <Footer/>
-            
-               </AppContainer>
-          {/* </ThemeProvider>       */}
-                  </ClerkProvider>
-
-          
-          
-            </body>
+              <AppContainer>
+                <Footer />
+              </AppContainer>
+            </ThemeProvider>
+          </ClerkProvider>
+        </Suspense>
+      </body>
     </html>
   );
 }
