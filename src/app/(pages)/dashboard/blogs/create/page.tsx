@@ -1,14 +1,16 @@
+import { BlogFormComp } from '@/components/app/(dashboard)/(blogs)/blog-from'
 import { AppContainer } from '@/components/app/(layouts)/app-container'
 import { Section } from '@/components/app/(layouts)/section-container'
+import { AnimatedGlow } from '@/components/common/(themes)/anumated-glow'
 import React from 'react'
 
 const DashboardBlogCreationPage = () => {
   return (
     <>
     <Section>
+      <AnimatedGlow/>
       <AppContainer>
-        Lorem ipsum dolor sit amet, consectetur adipisicing elit. Minima adipisci natus quae, rerum ut quibusdam pariatur totam. Deserunt, odio quos temporibus earum natus voluptatum maiores neque inventore sit, voluptates vero.
-        Lorem ipsum dolor sit amet, consectetur adipisicing elit. Minima adipisci natus quae, rerum ut quibusdam pariatur totam. Deserunt, odio quos temporibus earum natus voluptatum maiores neque inventore sit, voluptates vero.
+        <BlogFormComp/>
       </AppContainer>
     </Section>
     

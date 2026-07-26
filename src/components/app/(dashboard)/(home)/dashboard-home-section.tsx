@@ -165,7 +165,7 @@ export default function DashboarHomeSections() {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
           <Calendar className="w-4 h-4" />
-          <span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+          {/* <span>{new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span> */}
         </div>
       </motion.div>
 

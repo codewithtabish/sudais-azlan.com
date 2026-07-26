@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
-import { motion } from "framer-motion";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import React from "react";
+import { motion, type Variants } from "framer-motion";
 import {
   MessageCircle,
   ArrowUp,
   Mail,
   Heart,
+  MapPin,
+  Clock,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-gsap.registerPlugin(ScrollTrigger);
+import { Button } from "@/components/ui/button";
 
 /* ─── Inline Social Icons (no lucide import issues) ─── */
 
@@ -45,29 +45,26 @@ function XIcon({ className }: { className?: string }) {
 /* ─── QR Pattern Component ─── */
 function QRGrid() {
   const pattern = [
-    [1,1,1,1,1,1,1,0,1],
-    [1,0,0,0,0,0,1,0,0],
-    [1,0,1,1,1,0,1,0,1],
-    [1,0,1,1,1,0,1,0,0],
-    [1,0,1,1,1,0,1,0,1],
-    [1,0,0,0,0,0,1,0,0],
-    [1,1,1,1,1,1,1,0,1],
-    [0,0,0,0,0,0,0,0,0],
-    [1,0,1,0,1,0,1,0,1],
+    [1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1, 0, 0],
+    [1, 0, 1, 1, 1, 0, 1, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 0, 0],
+    [1, 0, 1, 1, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1, 0, 0],
+    [1, 1, 1, 1, 1, 1, 1, 0, 1],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1],
   ];
 
   return (
     <div
-      className="grid gap-[2px] w-24 h-24 bg-white p-1.5 rounded-lg"
+      className="grid h-24 w-24 gap-[2px] rounded-lg bg-white p-1.5"
       style={{ gridTemplateColumns: "repeat(9, 1fr)" }}
     >
       {pattern.flat().map((cell, i) => (
         <div
           key={i}
-          className={cn(
-            "rounded-[1px]",
-            cell ? "bg-black" : "bg-transparent"
-          )}
+          className={cn("rounded-[1px]", cell ? "bg-black" : "bg-transparent")}
         />
       ))}
     </div>
@@ -92,7 +89,7 @@ const footerLinks = {
     { label: "Education", href: "#" },
     { label: "Experience", href: "#" },
   ],
-  assets: [
+  resources: [
     { label: "Download CV", href: "#" },
     { label: "GitHub", href: "#" },
     { label: "Design System", href: "#" },
@@ -104,132 +101,66 @@ const socials = [
     name: "LinkedIn",
     icon: LinkedInIcon,
     href: "https://linkedin.com/in/yourprofile",
-    color: "hover:bg-[#0A66C2]/10 hover:text-[#0A66C2] hover:border-[#0A66C2]/30",
+    color:
+      "hover:bg-[#0A66C2]/10 hover:text-[#0A66C2] hover:border-[#0A66C2]/30",
   },
   {
     name: "Twitter / X",
     icon: XIcon,
     href: "https://twitter.com/yourhandle",
-    color: "hover:bg-foreground/10 hover:text-foreground hover:border-foreground/30",
+    color:
+      "hover:bg-foreground/10 hover:text-foreground hover:border-foreground/30",
   },
   {
     name: "WhatsApp",
     icon: MessageCircle,
     href: "https://wa.me/YOUR_NUMBER",
-    color: "hover:bg-[#25D366]/10 hover:text-[#25D366] hover:border-[#25D366]/30",
+    color:
+      "hover:bg-[#25D366]/10 hover:text-[#25D366] hover:border-[#25D366]/30",
   },
 ];
+
+/* ─── Animation variants ───
+   whileInView + IntersectionObserver means: no stale scroll-position cache,
+   no manual refresh, and correct behavior on short pages where the footer
+   is already in the viewport on first paint. */
+
+const containerVariants: Variants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.09, delayChildren: 0.05 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 28 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
+const fadeUpVariants: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+  },
+};
 
 /* ─── Component ─── */
 
 export default function Footer() {
-  const footerRef = useRef<HTMLElement>(null);
-  const colsRef = useRef<HTMLDivElement>(null);
-  const contactRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      const cols = colsRef.current?.querySelectorAll(".footer-col");
-      if (cols) {
-        gsap.fromTo(
-          cols,
-          { opacity: 0, y: 50 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.9,
-            stagger: 0.12,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: colsRef.current,
-              start: "top 85%",
-              toggleActions: "play none none reverse",
-              invalidateOnRefresh: true,
-              fastScrollEnd: true,
-            },
-          }
-        );
-      }
-
-      gsap.fromTo(
-        contactRef.current,
-        { opacity: 0, scale: 0.95, y: 40 },
-        {
-          opacity: 1,
-          scale: 1,
-          y: 0,
-          duration: 1,
-          ease: "back.out(1.4)",
-          scrollTrigger: {
-            trigger: contactRef.current,
-            start: "top 85%",
-            toggleActions: "play none none reverse",
-            invalidateOnRefresh: true,
-            fastScrollEnd: true,
-          },
-        }
-      );
-
-      gsap.fromTo(
-        bottomRef.current,
-        { opacity: 0 },
-        {
-          opacity: 1,
-          duration: 1,
-          delay: 0.3,
-          scrollTrigger: {
-            trigger: bottomRef.current,
-            start: "top 95%",
-            toggleActions: "play none none reverse",
-            invalidateOnRefresh: true,
-            fastScrollEnd: true,
-          },
-        }
-      );
-    }, footerRef);
-
-    // ── CRITICAL FIX: Refresh ScrollTrigger after layout settles ──
-    // Next.js client-side navigation doesn't trigger a full page load,
-    // so ScrollTrigger keeps stale positions from the previous page.
-    const refreshTriggers = () => {
-      ScrollTrigger.refresh();
-    };
-
-    // Immediate + delayed refreshes to catch font/image loading
-    const timers = [
-      setTimeout(refreshTriggers, 50),
-      setTimeout(refreshTriggers, 200),
-      setTimeout(refreshTriggers, 800),
-    ];
-
-    // Refresh on resize (debounced)
-    let resizeTimer: ReturnType<typeof setTimeout>;
-    const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(refreshTriggers, 150);
-    };
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      ctx.revert();
-      timers.forEach(clearTimeout);
-      clearTimeout(resizeTimer);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <footer
-      ref={footerRef}
-      className="relative pt-24 pb-8 px-6 overflow-hidden border-t border-border"
-    >
+    <footer className="relative overflow-hidden border-t border-border px-6 pb-8 pt-24">
       <div
-        className="absolute inset-0 opacity-[0.02] dark:opacity-[0.04] pointer-events-none"
+        className="pointer-events-none absolute inset-0 opacity-[0.02] dark:opacity-[0.04]"
         style={{
           backgroundImage:
             "radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)",
@@ -237,40 +168,57 @@ export default function Footer() {
         }}
       />
 
-      <div className="max-w-6xl mx-auto relative z-10">
-        {/* ── Top CTA Text ── */}
+      <div className="relative z-10 mx-auto max-w-6xl">
+        {/* ── Top CTA ── */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="text-center mb-20"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.3 }}
+          variants={fadeUpVariants}
+          className="mb-20 text-center"
         >
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
-            Let's Build{" "}
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-cyan-500">
+          <h2 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl">
+            Let&apos;s Build{" "}
+            <span className="bg-gradient-to-r from-primary via-purple-500 to-cyan-500 bg-clip-text text-transparent">
               The Future
             </span>
           </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="mx-auto mb-8 max-w-xl text-lg text-muted-foreground">
             Open for worldwide collaboration. Ready to turn your next big idea
             into reality.
           </p>
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button size="lg" className="group gap-2" asChild>
+              <a href="#contact">
+                Start a Project
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <a href="#projects">View My Work</a>
+            </Button>
+          </div>
         </motion.div>
 
         {/* ── Links Grid ── */}
-        <div
-          ref={colsRef}
-          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 mb-20"
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.15 }}
+          variants={containerVariants}
+          className="mb-20 grid grid-cols-2 gap-10 md:grid-cols-4 lg:grid-cols-5"
         >
           {/* Brand Column */}
-          <div className="footer-col col-span-2 md:col-span-4 lg:col-span-1">
-            <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-purple-500 mb-4">
+          <motion.div
+            variants={itemVariants}
+            className="col-span-2 md:col-span-4 lg:col-span-1"
+          >
+            <h3 className="mb-4 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-2xl font-bold text-transparent">
               Tabish
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-              Full-Stack Software Engineer crafting scalable, AI-powered digital
-              products from Pakistan to the world.
+            <p className="mb-6 max-w-xs text-sm leading-relaxed text-muted-foreground">
+              Full-Stack Software Engineer crafting scalable, AI-powered
+              digital products from Pakistan to the world.
             </p>
             <div className="flex items-center gap-3">
               {socials.map((social) => (
@@ -282,20 +230,20 @@ export default function Footer() {
                   whileHover={{ scale: 1.15, y: -2 }}
                   whileTap={{ scale: 0.95 }}
                   className={cn(
-                    "w-10 h-10 rounded-xl border border-border bg-secondary/50 flex items-center justify-center transition-colors",
+                    "flex size-10 items-center justify-center rounded-xl border border-border bg-secondary/50 transition-colors",
                     social.color
                   )}
                   aria-label={social.name}
                 >
-                  <social.icon className="w-4 h-4" />
+                  <social.icon className="size-4" />
                 </motion.a>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Blogs */}
-          <div className="footer-col">
-            <h4 className="font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">
+          <motion.div variants={itemVariants}>
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">
               Blogs
             </h4>
             <ul className="space-y-3">
@@ -304,19 +252,19 @@ export default function Footer() {
                   <motion.a
                     href={link.href}
                     whileHover={{ x: 4 }}
-                    className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="group flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    <span className="w-1 h-1 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                    <span className="size-1 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
                     {link.label}
                   </motion.a>
                 </li>
               ))}
             </ul>
-          </div>
+          </motion.div>
 
           {/* Projects */}
-          <div className="footer-col">
-            <h4 className="font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">
+          <motion.div variants={itemVariants}>
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">
               Projects
             </h4>
             <ul className="space-y-3">
@@ -325,19 +273,40 @@ export default function Footer() {
                   <motion.a
                     href={link.href}
                     whileHover={{ x: 4 }}
-                    className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="group flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    <span className="w-1 h-1 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                    <span className="size-1 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
                     {link.label}
                   </motion.a>
                 </li>
               ))}
             </ul>
-          </div>
+          </motion.div>
+
+          {/* Resources */}
+          <motion.div variants={itemVariants}>
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">
+              Resources
+            </h4>
+            <ul className="space-y-3">
+              {footerLinks.resources.map((link) => (
+                <li key={link.label}>
+                  <motion.a
+                    href={link.href}
+                    whileHover={{ x: 4 }}
+                    className="group flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <span className="size-1 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
+                    {link.label}
+                  </motion.a>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
 
           {/* About */}
-          <div className="footer-col">
-            <h4 className="font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">
+          <motion.div variants={itemVariants}>
+            <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-foreground">
               About
             </h4>
             <ul className="space-y-3">
@@ -346,57 +315,52 @@ export default function Footer() {
                   <motion.a
                     href={link.href}
                     whileHover={{ x: 4 }}
-                    className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="group flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    <span className="w-1 h-1 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
+                    <span className="size-1 rounded-full bg-primary/50 transition-colors group-hover:bg-primary" />
                     {link.label}
                   </motion.a>
                 </li>
               ))}
             </ul>
-          </div>
-
-          {/* Assets */}
-          <div className="footer-col">
-            <h4 className="font-semibold text-foreground mb-4 text-sm uppercase tracking-wider">
-              Assets
-            </h4>
-            <ul className="space-y-3">
-              {footerLinks.assets.map((link) => (
-                <li key={link.label}>
-                  <motion.a
-                    href={link.href}
-                    whileHover={{ x: 4 }}
-                    className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-primary/50 group-hover:bg-primary transition-colors" />
-                    {link.label}
-                  </motion.a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* ── Contact Card ── */}
-        <div
-          ref={contactRef}
-          className="relative mb-16 rounded-3xl border border-border bg-card/40 backdrop-blur-xl overflow-hidden"
+        {/* NOTE: overflow-hidden removed here on purpose — it was clipping
+            the QR code's hover glow, which extends outside this card's
+            bounds. The top hairline below doesn't need clipping since it's
+            already flush with the border. */}
+        <motion.div
+          id="contact"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={{
+            hidden: { opacity: 0, y: 40, scale: 0.97 },
+            show: {
+              opacity: 1,
+              y: 0,
+              scale: 1,
+              transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+            },
+          }}
+          className="relative mb-16 rounded-3xl border border-border bg-card/40 backdrop-blur-xl"
         >
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+          <div className="absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
 
-          <div className="relative z-10 p-8 md:p-12 flex flex-col lg:flex-row items-center justify-between gap-10">
+          <div className="relative z-10 flex flex-col items-center justify-between gap-10 p-8 md:p-12 lg:flex-row">
             {/* Left: Text + Socials */}
-            <div className="text-center lg:text-left space-y-4">
-              <h3 className="text-2xl md:text-3xl font-bold">
+            <div className="space-y-4 text-center lg:text-left">
+              <h3 className="text-2xl font-bold md:text-3xl">
                 Ready to <span className="text-primary">Connect?</span>
               </h3>
-              <p className="text-muted-foreground max-w-md">
-                Whether you have a startup idea, need an enterprise solution, or
-                just want to say hello — my inbox is always open.
+              <p className="max-w-md text-muted-foreground">
+                Whether you have a startup idea, need an enterprise solution,
+                or just want to say hello — my inbox is always open.
               </p>
 
-              <div className="flex items-center justify-center lg:justify-start gap-4 pt-2">
+              <div className="flex items-center justify-center gap-4 pt-2 lg:justify-start">
                 {socials.map((social) => (
                   <motion.a
                     key={social.name}
@@ -406,20 +370,33 @@ export default function Footer() {
                     whileHover={{ scale: 1.1, y: -3 }}
                     whileTap={{ scale: 0.95 }}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-medium transition-colors",
+                      "flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors",
                       "border-border bg-secondary/50 text-secondary-foreground",
                       social.color
                     )}
                   >
-                    <social.icon className="w-4 h-4" />
+                    <social.icon className="size-4" />
                     <span className="hidden sm:inline">{social.name}</span>
                   </motion.a>
                 ))}
               </div>
 
-              <div className="flex items-center justify-center lg:justify-start gap-2 text-sm text-muted-foreground pt-2">
-                <Mail className="w-4 h-4" />
-                <span>hello@tabish.dev</span>
+              <div className="flex flex-col items-center gap-2 pt-2 text-sm text-muted-foreground lg:items-start">
+                <div className="flex items-center gap-2">
+                  <Mail className="size-4" />
+                  <span>hello@tabish.dev</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="size-4" />
+                  <span>Lahore, Pakistan</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="size-4" />
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="size-1.5 rounded-full bg-emerald-500" />
+                    Available for new projects
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -428,18 +405,18 @@ export default function Footer() {
               <motion.div
                 whileHover={{ scale: 1.05, rotate: 1 }}
                 transition={{ type: "spring", stiffness: 300 }}
-                className="relative group cursor-pointer"
+                className="group relative cursor-pointer"
               >
-                <div className="absolute -inset-3 bg-gradient-to-r from-[#25D366]/20 to-primary/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                <div className="relative bg-card border border-border rounded-2xl p-4 shadow-xl">
+                <div className="absolute -inset-3 rounded-2xl bg-gradient-to-r from-[#25D366]/20 to-primary/20 opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-100" />
+
+                <div className="relative rounded-2xl border border-border bg-card p-4 shadow-xl">
                   <QRGrid />
                 </div>
               </motion.div>
-              
+
               <div className="flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                <MessageCircle className="size-4 text-[#25D366]" />
+                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                   WhatsApp Business
                 </span>
               </div>
@@ -448,16 +425,23 @@ export default function Footer() {
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── Bottom Bar ── */}
-        <div
-          ref={bottomRef}
-          className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-border"
+        <motion.div
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, amount: 0.4 }}
+          variants={{
+            hidden: { opacity: 0 },
+            show: { opacity: 1, transition: { duration: 0.6 } },
+          }}
+          className="flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row"
         >
-          <p className="text-sm text-muted-foreground flex items-center gap-1">
-            © {new Date().getFullYear()} Tabish. Crafted with
-            <Heart className="w-3 h-3 text-red-500 fill-red-500 mx-1" />
+          <p className="flex items-center gap-1 text-sm text-muted-foreground">
+            {/* © {new Date().getFullYear()} */}
+             Tabish. Crafted with
+            <Heart className="mx-1 size-3 fill-red-500 text-red-500" />
             in Pakistan
           </p>
 
@@ -470,13 +454,13 @@ export default function Footer() {
               onClick={scrollToTop}
               whileHover={{ scale: 1.1, y: -2 }}
               whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 rounded-full border border-border bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+              className="flex size-10 items-center justify-center rounded-full border border-border bg-secondary/50 text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
               aria-label="Back to top"
             >
-              <ArrowUp className="w-4 h-4" />
+              <ArrowUp className="size-4" />
             </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
     </footer>
   );

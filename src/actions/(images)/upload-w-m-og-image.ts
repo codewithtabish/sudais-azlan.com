@@ -123,7 +123,7 @@ async function applyWatermarkOpacity(
 
 /**
  * Pad the watermark with transparent space at the top so it sits
- * ~60 px down from the top edge when using gravity: "north".
+ * ~40 px down from the top edge when using gravity: "north".
  */
 async function padWatermarkForTopOffset(
   watermarkBuffer: Buffer,
@@ -172,30 +172,54 @@ async function padWatermarkForTopOffset(
 }
 
 /**
- * Upload a watermarked blog banner image to S3.
+ * Upload a watermarked Open Graph (OG) image to S3.
  *
- * Production pipeline (16:9 banners only):
- * 1. Receive image as number[] (Server Action compatible)
- * 2. Auto-rotate via EXIF
- * 3. Validate aspect ratio is ~16:9 (±5% tolerance) — reject otherwise
- * 4. Resize only if wider than 1920px (fit: "inside", never enlarge, never crop)
- * 5. Resize watermark proportionally (~75% of image width)
- * 6. Apply 15% opacity
- * 7. Pad watermark with ~60 px top offset
- * 8. Composite watermark at upper-center (gravity: "north")
- * 9. Convert to WebP (quality 82, effort 6)
- * 10. Strip all metadata / EXIF
- * 11. Save debug.webp locally
- * 12. Upload to S3
- * 13. Return S3 URL
+ * Pipeline:
+ * 1. Validate MIME type
+ * 2. Validate upload size (max 10 MB)
+ * 3. Validate image can be decoded by Sharp
+ * 4. Auto-rotate via EXIF
+ * 5. Validate minimum resolution (1200 × 630)
+ * 6. Force resize to exactly 1200 × 630 (fit: "cover", attention strategy)
+ *    – any aspect ratio is accepted; we crop/resize to the required OG size
+ * 7. Resize watermark proportionally (~75% of image width)
+ * 8. Apply 15% opacity
+ * 9. Pad watermark with 40 px top offset
+ * 10. Composite watermark at upper-center (gravity: "north")
+ * 11. Convert to WebP (quality 82, effort 6)
+ * 12. Strip all metadata (default Sharp behaviour)
+ * 13. Save debug-og.webp locally
+ * 14. Upload to S3
+ * 15. Return S3 URL
  */
-export async function uploadWatermarkedImage(
+export async function uploadWatermarkedOgImage(
   fileData: number[],
   fileType: string,
   fileName: string,
 ): Promise<{ fileUrl: string }> {
   try {
-    // ── 1. Convert incoming data to Buffer ─────────────────────────────
+    // ── 1. Validate MIME type ──────────────────────────────────────────
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/avif",
+    ];
+
+    if (!allowedMimeTypes.includes(fileType)) {
+      throw new Error(
+        "Unsupported image format.\n\nPlease upload a JPEG, PNG, WebP, or AVIF image.",
+      );
+    }
+
+    // ── 2. Validate upload size (max 10 MB) ────────────────────────────
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+    if (fileData.length > MAX_SIZE_BYTES) {
+      throw new Error("Image exceeds the maximum upload size of 10 MB.");
+    }
+
+    // ── 3. Convert incoming data to Buffer ─────────────────────────────
     const inputBuffer = Buffer.from(fileData);
 
     if (inputBuffer.length === 0) {
@@ -212,11 +236,18 @@ export async function uploadWatermarkedImage(
       "bytes",
     );
 
-    // ── 2. Load original watermark ─────────────────────────────────────
+    // ── 4. Validate image can be decoded by Sharp ──────────────────────
+    try {
+      await sharp(inputBuffer).metadata();
+    } catch {
+      throw new Error("Invalid image file.");
+    }
+
+    // ── 5. Load original watermark ─────────────────────────────────────
     const originalWatermarkBuffer = await getOriginalWatermarkBuffer();
     console.log("[Upload] Watermark loaded from:", watermarkPath);
 
-    // ── 3. Auto-rotate image based on EXIF ────────────────────────────
+    // ── 6. Auto-rotate image based on EXIF ─────────────────────────────
     const rotatedBuffer = await sharp(inputBuffer).rotate().toBuffer();
 
     const rotatedMeta = await sharp(rotatedBuffer).metadata();
@@ -234,54 +265,47 @@ export async function uploadWatermarkedImage(
       originalHeight,
     );
 
-    // ── 4. Validate 16:9 aspect ratio (±5% tolerance) ─────────────────
-    const ratio = originalWidth / originalHeight;
-    const TARGET_RATIO = 16 / 9; // ≈ 1.777...
-    const TOLERANCE = 0.05; // ±5%
-    const minRatio = TARGET_RATIO * (1 - TOLERANCE); // ≈ 1.688
-    const maxRatio = TARGET_RATIO * (1 + TOLERANCE); // ≈ 1.866
+    // ── 7. Validate minimum resolution ─────────────────────────────────
+    const MIN_WIDTH = 1200;
+    const MIN_HEIGHT = 630;
 
-    if (ratio < minRatio || ratio > maxRatio) {
+    if (originalWidth < MIN_WIDTH || originalHeight < MIN_HEIGHT) {
       throw new Error(
-        "Please upload a 16:9 image.\n\nRecommended size:\n1920 × 1080 pixels.",
+        "Image resolution is too low.\n\nMinimum size:\n1200 × 630 pixels.",
       );
     }
 
-    console.log(
-      "[Upload] Aspect ratio validated:",
-      ratio.toFixed(3),
-      "(16:9 ±5%)",
-    );
+    // ── 8. Force resize to exactly 1200 × 630 ──────────────────────────
+    // Any aspect ratio is now accepted. We always output the required OG size.
+    // fit: "cover" + attention strategy keeps the most important area visible.
+    const OG_WIDTH = 1200;
+    const OG_HEIGHT = 630;
 
-    // ── 5. Resize only if wider than 1920px ───────────────────────────
-    // Preserves aspect ratio • never crops • never stretches • never enlarges
     const resizedBuffer = await sharp(rotatedBuffer)
-      .resize({
-        width: 1920,
-        fit: "inside",
-        withoutEnlargement: true,
+      .resize(OG_WIDTH, OG_HEIGHT, {
+        fit: "cover",
+        position: sharp.strategy.attention,
       })
       .toBuffer();
 
-    const resizedMeta = await sharp(resizedBuffer).metadata();
-    const finalWidth = resizedMeta.width ?? originalWidth;
-    const finalHeight = resizedMeta.height ?? originalHeight;
+    const finalWidth = OG_WIDTH;
+    const finalHeight = OG_HEIGHT;
 
     console.log(
-      "[Upload] Final banner dimensions:",
+      "[Upload] Final OG dimensions:",
       finalWidth,
       "x",
       finalHeight,
     );
 
-    // ── 6. Resize watermark to fit the final image ────────────────────
+    // ── 9. Resize watermark to fit the final image ─────────────────────
     const watermarkResizedBuffer = await resizeWatermark(
       originalWatermarkBuffer,
       finalWidth,
       finalHeight,
     );
 
-    // ── 7. Apply premium opacity (15%) ─────────────────────────────────
+    // ── 10. Apply premium opacity (15%) ────────────────────────────────
     const OPACITY = 0.15;
     const watermarkFadedBuffer = await applyWatermarkOpacity(
       watermarkResizedBuffer,
@@ -289,8 +313,8 @@ export async function uploadWatermarkedImage(
     );
     console.log("[Upload] Watermark opacity applied:", OPACITY * 100 + "%");
 
-    // ── 8. Pad watermark with transparent top offset ──────────────────
-    const TOP_OFFSET = 60;
+    // ── 11. Pad watermark with transparent top offset ──────────────────
+    const TOP_OFFSET = 40;
     const paddedWatermarkBuffer = await padWatermarkForTopOffset(
       watermarkFadedBuffer,
       finalWidth,
@@ -302,7 +326,7 @@ export async function uploadWatermarkedImage(
       TOP_OFFSET + "px",
     );
 
-    // ── 9. Composite watermark onto image (upper-center) ──────────────
+    // ── 12. Composite watermark onto image (upper-center) ──────────────
     const watermarkedBuffer = await sharp(resizedBuffer)
       .composite([
         {
@@ -315,29 +339,30 @@ export async function uploadWatermarkedImage(
         quality: 82,
         effort: 6,
       })
-      .withMetadata({}) // strip all metadata / EXIF
-      .toBuffer();
+      .toBuffer(); // metadata is stripped by default
 
     console.log("[Upload] Watermark composited successfully at north");
 
-    // ── 10. Save debug file locally ───────────────────────────────────
-    const debugPath = path.join(process.cwd(), "debug.webp");
+    // ── 13. Save debug file locally ────────────────────────────────────
+    const debugPath = path.join(process.cwd(), "debug-og.webp");
     await fs.promises.writeFile(debugPath, watermarkedBuffer);
     console.log("[Upload] Debug file saved to:", debugPath);
 
-    // ── 11. Upload processed buffer to S3 ─────────────────────────────
+    // ── 14. Upload processed buffer to S3 ──────────────────────────────
     const sanitizedName = fileName
       .replace(/\.[^/.]+$/, "")
-      .replace(/[^a-zA-Z0-9-]/g, "-");
+      .replace(/[^a-zA-Z0-9-_]/g, "-")
+      .replace(/-+/g, "-")
+      .toLowerCase();
 
-    const key = `euro/blog-covers/${uuidv4()}-${sanitizedName}.webp`;
+    const key = `euro/og-images/${uuidv4()}-${sanitizedName}.webp`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET_NAME!,
       Key: key,
       Body: watermarkedBuffer,
       ContentType: "image/webp",
-      CacheControl: "public, max-age=31536000",
+      CacheControl: "public, max-age=31536000, immutable",
     });
 
     await s3.send(command);
@@ -348,11 +373,11 @@ export async function uploadWatermarkedImage(
 
     return { fileUrl };
   } catch (error) {
-    console.error("[uploadWatermarkedImage] Error:", error);
+    console.error("[uploadWatermarkedOgImage] Error:", error);
     throw new Error(
       error instanceof Error
         ? error.message
-        : "Failed to process and upload image",
+        : "Failed to process and upload OG image",
     );
   }
 }
