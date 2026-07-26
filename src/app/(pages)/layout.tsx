@@ -41,12 +41,12 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ClerkProvider>
 
-  <ThemeProvider
+  {/* <ThemeProvider
             attribute="class"
             defaultTheme="dark"
             enableSystem
             disableTransitionOnChange
-          >
+          > */}
             <AppContainer>
               <div>
                 <div className="hidden md:block">
@@ -71,7 +71,7 @@ export default function RootLayout({
                 <Footer/>
             
                </AppContainer>
-          </ThemeProvider>      
+          {/* </ThemeProvider>       */}
                   </ClerkProvider>
 
           
