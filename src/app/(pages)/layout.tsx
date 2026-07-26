@@ -4,9 +4,7 @@ import "../globals.css";
 import { ThemeProvider } from "@/components/common/(themes)/theme-provider";
 import { AppContainer } from "@/components/app/(layouts)/app-container";
 import Footer from "@/components/common/(footer)/footer";
-import { NotchNavbar } from "@/components/ui/notch-navbar";
 import { ClerkProvider } from '@clerk/nextjs'
-import { Navbar } from "@/components/common/(navbar)/navbar";
 // import { Suspense } from "react";
 
 
@@ -49,14 +47,14 @@ export default function RootLayout({
             <AppContainer>
               <div>
                 <div className="hidden md:block">
-              <NotchNavbar/>
+              {/* <NotchNavbar/> */}
 
 
                 </div>
                 <div className="block md:hidden">
 
                   
-                <Navbar/>
+                {/* <Navbar/> */}
 
                 </div>
 
