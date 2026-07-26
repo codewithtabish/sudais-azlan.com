@@ -41,7 +41,7 @@ import React, { Suspense } from 'react'
       <ServicesSection/>
     </AppContainer>
    </Section>
-
+{/* 
    <Section>
     <AppContainer>
 <SectionHeader
@@ -52,7 +52,7 @@ import React, { Suspense } from 'react'
       <FeaturedBlogsList />
     </Suspense>
     </AppContainer>
-   </Section>
+   </Section> */}
 
    <Section>
     <TestimonialsSection/>
