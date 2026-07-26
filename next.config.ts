@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["*"],
 
   // Enable Next.js 16 Cache Components
-  // cacheComponents: true,
+  cacheComponents: true,
   reactStrictMode: false,
 
   
